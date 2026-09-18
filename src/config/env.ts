@@ -1,6 +1,8 @@
-import dotenv from "dotenv";
-
-dotenv.config();
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file present — fall back to variables already set in the environment.
+}
 
 function required(key: string): string {
   const value = process.env[key];

@@ -42,9 +42,6 @@ const CandidateSchema = new Schema<ICandidate>(
   { timestamps: true }
 );
 
-CandidateSchema.index({ email: 1 }, { unique: true });
-CandidateSchema.index({ phone: 1 }, { unique: true });
-
 const Candidate: Model<ICandidate> =
   mongoose.models.Candidate || mongoose.model<ICandidate>("Candidate", CandidateSchema);
 

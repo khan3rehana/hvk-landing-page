@@ -89,11 +89,34 @@ async function finalizeSuccessfulPayment(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ApiSuccess'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/RegistrationSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
  *       400:
  *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       409:
  *         description: Duplicate email or phone
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function registerCandidate(req: Request, res: Response) {
   try {
@@ -153,8 +176,37 @@ export async function registerCandidate(req: Request, res: Response) {
  *     responses:
  *       200:
  *         description: Razorpay order created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CreateOrderSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
+ *       400:
+ *         description: Candidate already paid or invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       404:
  *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Order creation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function createRazorpayOrder(req: Request, res: Response) {
   try {
@@ -230,10 +282,37 @@ export async function createRazorpayOrder(req: Request, res: Response) {
  *     responses:
  *       200:
  *         description: Payment verified, candidate marked paid, acknowledgement email sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/VerifyPaymentSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
  *       400:
  *         description: Invalid signature or order mismatch
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       404:
  *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Payment verification failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function verifyRazorpayPayment(req: Request, res: Response) {
   try {
@@ -309,13 +388,38 @@ export async function verifyRazorpayPayment(req: Request, res: Response) {
  *       - in: path
  *         name: id
  *         required: true
+ *         description: MongoDB Candidate ID
  *         schema:
  *           type: string
+ *           example: "6aad9154d93390cdd2688d2d"
  *     responses:
  *       200:
  *         description: Candidate found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CandidateStatusData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
  *       404:
  *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Could not fetch candidate
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function getCandidateStatus(req: Request, res: Response) {
   try {
@@ -344,30 +448,67 @@ export async function getCandidateStatus(req: Request, res: Response) {
  *       instead of requesting a new one, then resends the email. Admin-only —
  *       requires the x-admin-api-key header.
  *     tags: [Candidates]
+ *     security:
+ *       - AdminApiKeyAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *           example: "6aad9154d93390cdd2688d2d"
  *       - in: header
  *         name: x-admin-api-key
  *         required: true
  *         schema:
  *           type: string
+ *         description: Admin secret key configured on server
  *     responses:
  *       200:
  *         description: Exam link ensured and acknowledgement email (re)sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/ResendExamLinkSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
  *       400:
  *         description: Candidate has not completed payment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       401:
  *         description: Missing or invalid x-admin-api-key
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       404:
  *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       500:
  *         description: ADMIN_API_KEY not configured on the server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       502:
  *         description: Exam access service could not issue a link
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function resendExamAccessLink(req: Request, res: Response) {
   try {
@@ -452,13 +593,47 @@ interface RazorpayWebhookPayload {
  *       calls /razorpay/verify (browser closed mid-checkout, app killed, etc).
  *       Configure this URL + a webhook secret in the Razorpay dashboard.
  *     tags: [Payments]
+ *     parameters:
+ *       - in: header
+ *         name: x-razorpay-signature
+ *         required: true
+ *         description: HMAC-SHA256 signature calculated with RAZORPAY_WEBHOOK_SECRET
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RazorpayWebhookPayload'
  *     responses:
  *       200:
  *         description: Event processed (or acknowledged/ignored)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/WebhookSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
  *       400:
  *         description: Missing or invalid webhook signature
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  *       500:
  *         description: Webhook secret not configured on the server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
  */
 export async function handleRazorpayWebhook(req: Request, res: Response) {
   try {

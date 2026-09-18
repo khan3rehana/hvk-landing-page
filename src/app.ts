@@ -31,12 +31,48 @@ export function createApp(): Application {
   app.use(express.urlencoded({ extended: true }));
 
   // Health check — used by mobile team / uptime monitors
+  /**
+   * @openapi
+   * /health:
+   *   get:
+   *     summary: System health check
+   *     description: Returns API health status. Used by uptime monitors, mobile app, and web clients.
+   *     tags: [System]
+   *     responses:
+   *       200:
+   *         description: Service is healthy
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   $ref: '#/components/schemas/HealthCheckSuccessData'
+   *                 error:
+   *                   type: "null"
+   *                   example: null
+   */
   app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ success: true, data: { status: "ok" }, error: null });
   });
 
   // Swagger docs
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customSiteTitle: "HVK API Documentation",
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        docExpansion: "list",
+        filter: true,
+      },
+    })
+  );
   app.get("/api-docs.json", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
