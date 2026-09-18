@@ -26,6 +26,7 @@ directly into Postman / their codegen tooling.
 | POST | /api/register | Create pending candidate (blocks duplicate email/phone) |
 | POST | /api/razorpay/order | Create Razorpay order for a candidate |
 | POST | /api/razorpay/verify | Verify payment signature, mark paid, send email |
+| POST | /api/razorpay/webhook | Razorpay server-to-server webhook (payment.captured) — confirms payment even if the client never calls /verify |
 | GET | /api/candidates/:id | Get candidate status (used by mobile app) |
 
 ## Scripts

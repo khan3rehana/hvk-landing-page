@@ -12,6 +12,8 @@ export interface ICandidate extends Document {
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   acknowledgementEmailSent: boolean;
+  examLink?: string;
+  examLinkIssuedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +36,8 @@ const CandidateSchema = new Schema<ICandidate>(
     razorpayOrderId: { type: String, default: null },
     razorpayPaymentId: { type: String, default: null },
     acknowledgementEmailSent: { type: Boolean, default: false },
+    examLink: { type: String, default: null },
+    examLinkIssuedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

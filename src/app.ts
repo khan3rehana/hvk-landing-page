@@ -19,7 +19,15 @@ export function createApp(): Application {
     })
   );
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
-  app.use(express.json());
+  app.use(
+    express.json({
+      // Keep the exact raw bytes around so the Razorpay webhook handler can verify
+      // its HMAC signature — re-serializing req.body would not reliably match it.
+      verify: (req: Request, _res: Response, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    })
+  );
   app.use(express.urlencoded({ extended: true }));
 
   // Health check — used by mobile team / uptime monitors
