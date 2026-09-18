@@ -5,6 +5,7 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./docs/swagger";
 import candidateRoutes from "./routes/candidateRoutes";
+import emailRoutes from "./routes/emailRoutes";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler";
 import { env } from "./config/env";
 
@@ -80,6 +81,7 @@ export function createApp(): Application {
 
   // API routes
   app.use("/api", candidateRoutes);
+  app.use("/api/email", emailRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

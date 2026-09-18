@@ -1,11 +1,11 @@
 # HVK Backend
 
 Standalone Node.js + Express + TypeScript API for HVK candidate registration, Razorpay
-payments, and Resend acknowledgement emails. Shared by the **web app** and the
+payments, and Brevo acknowledgement emails. Shared by the **web app** and the
 **mobile app** — CORS is configured for multiple origins.
 
 ## Stack
-Express 5 · TypeScript · MongoDB/Mongoose · Razorpay · Resend · Zod · Swagger (OpenAPI 3)
+Express 5 · TypeScript · MongoDB/Mongoose · Razorpay · Brevo · Zod · Swagger (OpenAPI 3)
 
 ## Setup
 \`\`\`bash

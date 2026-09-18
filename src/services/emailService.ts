@@ -1,16 +1,123 @@
-import { Resend } from "resend";
+import { BrevoClient } from "@getbrevo/brevo";
 import { env } from "../config/env";
+import { renderTemplate } from "./templateService";
 
-const resend = new Resend(env.RESEND_API_KEY);
+export const brevo = new BrevoClient({ apiKey: env.BREVO_KEY });
+
+/**
+ * Parses sender from string, supporting both "Name <email@domain.com>"
+ * and plain "email@domain.com" formats.
+ */
+export function parseSender(
+  fromStr: string,
+  defaultName = "HVK Registrations"
+): { name: string; email: string } {
+  const match = fromStr.match(/^(.*?)\s*<(.+?)>$/);
+  if (match) {
+    return { name: match[1].trim() || defaultName, email: match[2].trim() };
+  }
+  return { name: defaultName, email: fromStr.trim() };
+}
+
+export type EmailRecipient = string | { email: string; name?: string };
+
+export interface SendEmailOptions {
+  to: EmailRecipient | EmailRecipient[];
+  subject: string;
+  html?: string;
+  template?: string;
+  templateData?: Record<string, any>;
+  sender?: { name?: string; email?: string };
+}
+
+/**
+ * Normalizes recipients into Brevo's expected format: Array<{ email: string, name?: string }>.
+ */
+function normalizeRecipients(
+  recipients: EmailRecipient | EmailRecipient[]
+): Array<{ email: string; name?: string }> {
+  const list = Array.isArray(recipients) ? recipients : [recipients];
+
+  return list
+    .map((r) => {
+      if (typeof r === "string") {
+        const parsed = parseSender(r, "");
+        return parsed.name ? { email: parsed.email, name: parsed.name } : { email: parsed.email };
+      }
+      return { email: r.email.trim(), ...(r.name?.trim() ? { name: r.name.trim() } : {}) };
+    })
+    .filter((r) => Boolean(r.email));
+}
+
+/**
+ * General-purpose email sending function via Brevo.
+ * Supports:
+ * - Direct custom HTML (`html`)
+ * - Pre-built HTML templates from `src/templates/emails/` (`template` + `templateData`)
+ * - Single or multiple recipients (`to`)
+ * - Optional custom sender overrides (`sender`)
+ */
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  template,
+  templateData = {},
+  sender,
+}: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    const toRecipients = normalizeRecipients(to);
+    if (toRecipients.length === 0) {
+      return { success: false, error: "At least one valid recipient email is required" };
+    }
+
+    let finalHtml: string;
+    if (html && html.trim()) {
+      finalHtml = html;
+    } else if (template) {
+      finalHtml = renderTemplate(template, templateData);
+    } else {
+      return {
+        success: false,
+        error: "Either 'html' or a valid 'template' name must be provided",
+      };
+    }
+
+    const defaultSender = parseSender(env.BREVO_FROM_EMAIL, env.BREVO_FROM_NAME);
+    const resolvedSender = {
+      name: sender?.name?.trim() || defaultSender.name,
+      email: sender?.email?.trim() || defaultSender.email,
+    };
+
+    const response = await brevo.transactionalEmails.sendTransacEmail({
+      sender: resolvedSender,
+      to: toRecipients,
+      subject,
+      htmlContent: finalHtml,
+    });
+
+    return { success: true, messageId: response.messageId };
+  } catch (err: any) {
+    console.error("Brevo sendEmail error:", err);
+    return {
+      success: false,
+      error: err?.message ?? "Unknown error sending email via Brevo",
+    };
+  }
+}
 
 interface AcknowledgementEmailParams {
   toEmail: string;
   candidateName: string;
   paymentId: string;
   amountPaise: number;
-  examLink?: string; // included only if hvk-exam-backend successfully issued one
+  examLink?: string;
 }
 
+/**
+ * Sends the candidate registration confirmation and payment receipt email
+ * using the 'acknowledgement' HTML template.
+ */
 export async function sendAcknowledgementEmail({
   toEmail,
   candidateName,
@@ -20,54 +127,56 @@ export async function sendAcknowledgementEmail({
 }: AcknowledgementEmailParams): Promise<{ success: boolean; error?: string }> {
   const amountRupees = (amountPaise / 100).toFixed(2);
 
-  const examSection = examLink
-    ? `
-        <div style="margin: 24px 0; padding: 18px; border-radius: 12px; background: #eaf3ff; border: 1px solid #dce7f5;">
-          <p style="margin: 0 0 10px; font-weight: 700; color: #0a2452;">Your Exam Access Link</p>
-          <p style="margin: 0 0 14px; color: #344762; font-size: 14px;">
-            This link is unique to your email and can only be used by you. It stays active
-            until you submit your exam.
-          </p>
-          <a href="${examLink}" style="display: inline-block; background: #1457b8; color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700;">
-            Access Your Exam
-          </a>
-          <p style="margin: 12px 0 0; color: #62718a; font-size: 12px;">
-            If the button doesn't work, copy this link: ${examLink}
-          </p>
-        </div>
-      `
-    : "";
+  return sendEmail({
+    to: [{ email: toEmail, name: candidateName }],
+    subject: "HVK Registration Confirmed — Payment Received",
+    template: "acknowledgement",
+    templateData: {
+      candidateName,
+      paymentId,
+      amountRupees,
+      examLink: examLink || "",
+    },
+  });
+}
 
-  const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: auto; color: #10213d;">
-      <div style="background: #0a2452; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: #fff; margin: 0; font-size: 22px;">HVK Registration Confirmed</h1>
-      </div>
-      <div style="padding: 24px; border: 1px solid #dce7f5; border-top: none; border-radius: 0 0 12px 12px;">
-        <p>Hi ${candidateName},</p>
-        <p>Thank you for registering with HVK. Your registration fee payment has been received and confirmed.</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr><td style="padding: 8px 0; color: #62718a;">Payment Reference</td><td style="padding: 8px 0; font-weight: 700;">${paymentId}</td></tr>
-          <tr><td style="padding: 8px 0; color: #62718a;">Amount Paid</td><td style="padding: 8px 0; font-weight: 700;">₹${amountRupees}</td></tr>
-        </table>
-        ${examSection}
-        <p>We'll be in touch with next steps shortly. If you have any questions, just reply to this email.</p>
-        <p style="margin-top: 24px; color: #62718a; font-size: 13px;">— Team HVK</p>
-      </div>
-    </div>
-  `;
+export interface CreateCampaignParams {
+  name: string;
+  subject: string;
+  htmlContent: string;
+  sender?: { name: string; email: string };
+  listIds?: number[];
+  scheduledAt?: string;
+}
 
+/**
+ * Creates an email campaign via the Brevo EmailCampaigns API.
+ */
+export async function createEmailCampaign({
+  name,
+  subject,
+  htmlContent,
+  sender,
+  listIds,
+  scheduledAt,
+}: CreateCampaignParams): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
-    const { error } = await resend.emails.send({
-      from: env.RESEND_FROM_EMAIL,
-      to: toEmail,
-      subject: "HVK Registration Confirmed — Payment Received",
-      html,
+    const defaultSender = parseSender(env.BREVO_FROM_EMAIL, env.BREVO_FROM_NAME);
+    const result = await brevo.emailCampaigns.createEmailCampaign({
+      name,
+      subject,
+      sender: sender ?? defaultSender,
+      htmlContent,
+      recipients: listIds && listIds.length > 0 ? { listIds } : undefined,
+      scheduledAt,
     });
 
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Unknown email error" };
+    return { success: true, data: result };
+  } catch (err: any) {
+    console.error("Brevo campaign error:", err);
+    return {
+      success: false,
+      error: err?.message ?? "Failed to create email campaign",
+    };
   }
 }

@@ -22,8 +22,10 @@ export const env = {
   // Secret configured on the Razorpay dashboard webhook — separate from RAZORPAY_KEY_SECRET.
   // Optional so the app still boots without it, but the webhook route refuses requests until it's set.
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
-  RESEND_API_KEY: required("RESEND_API_KEY"),
-  RESEND_FROM_EMAIL: required("RESEND_FROM_EMAIL"),
+  // Brevo email service configuration
+  BREVO_KEY: required("BREVO_KEY"),
+  BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL || "registrations@yourdomain.com",
+  BREVO_FROM_NAME: process.env.BREVO_FROM_NAME || "HVK Registrations",
   // hvk-exam-backend base URL and shared secret (server-to-server auth)
   EXAM_API_URL: process.env.EXAM_API_URL || "",
   INTERNAL_EXAM_API_KEY: process.env.INTERNAL_EXAM_API_KEY || "",

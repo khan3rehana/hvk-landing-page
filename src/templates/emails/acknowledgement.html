@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HVK Registration Confirmed</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f7fb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #10213d;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f4f7fb; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(10, 36, 82, 0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #0a2452; padding: 28px 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">HVK Registration Confirmed</h1>
+            </td>
+          </tr>
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; margin: 0 0 16px; color: #10213d;">Hi <strong>{{candidateName}}</strong>,</p>
+              <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px; color: #334155;">
+                Thank you for registering with HVK. Your registration fee payment has been received and confirmed.
+              </p>
+              
+              <!-- Payment Details Table -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin: 20px 0; padding: 16px 20px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Payment Reference</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #0f172a; font-size: 14px; font-family: monospace;">{{paymentId}}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-top: 1px solid #edf2f7;">Amount Paid</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #059669; font-size: 15px; border-top: 1px solid #edf2f7;">₹{{amountRupees}}</td>
+                </tr>
+              </table>
+
+              <!-- Exam Access Section (Conditional) -->
+              {{#if examLink}}
+              <div style="margin: 28px 0; padding: 22px; border-radius: 10px; background-color: #eaf3ff; border: 1px solid #bfdbfe;">
+                <p style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: #1e3a8a;">Your Exam Access Link</p>
+                <p style="margin: 0 0 16px; color: #334155; font-size: 14px; line-height: 1.5;">
+                  This link is unique to your email and can only be used by you. It stays active until you submit your exam.
+                </p>
+                <div style="text-align: center; margin: 16px 0;">
+                  <a href="{{examLink}}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 15px;">
+                    Access Your Exam
+                  </a>
+                </div>
+                <p style="margin: 14px 0 0; color: #64748b; font-size: 12px; word-break: break-all;">
+                  If the button does not work, copy and paste this link into your browser:<br>
+                  <a href="{{examLink}}" style="color: #2563eb;">{{examLink}}</a>
+                </p>
+              </div>
+              {{/if}}
+
+              <p style="font-size: 14px; line-height: 1.6; margin: 24px 0 8px; color: #475569;">
+                We will be in touch with next steps shortly. If you have any questions, simply reply to this email.
+              </p>
+              <p style="margin: 24px 0 0; color: #64748b; font-size: 14px; font-weight: 600;">
+                — Team HVK
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+              © {{year}} HVK. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

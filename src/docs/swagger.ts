@@ -20,6 +20,7 @@ const options: swaggerJSDoc.Options = {
       { name: "System", description: "Health check and system monitoring" },
       { name: "Candidates", description: "Candidate registration, lookup, and management" },
       { name: "Payments", description: "Razorpay order creation, payment verification, and webhooks" },
+      { name: "Email", description: "Direct email sending and template management" },
     ],
     components: {
       securitySchemes: {
@@ -146,6 +147,82 @@ const options: swaggerJSDoc.Options = {
           type: "object",
           properties: {
             status: { type: "string", example: "ok" },
+          },
+        },
+        SendEmailInput: {
+          type: "object",
+          required: ["to", "subject"],
+          properties: {
+            to: {
+              oneOf: [
+                { type: "string", example: "priya@example.com" },
+                {
+                  type: "array",
+                  items: { type: "string" },
+                  example: ["candidate1@example.com", "candidate2@example.com"],
+                },
+                {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      email: { type: "string", example: "priya@example.com" },
+                      name: { type: "string", example: "Priya Sharma" },
+                    },
+                  },
+                },
+              ],
+            },
+            subject: { type: "string", example: "Important Update from HVK" },
+            html: {
+              type: "string",
+              example: "<h1>Custom Header</h1><p>This is custom HTML content sent directly.</p>",
+              description: "Direct HTML string to send. Provide either 'html' or 'template'.",
+            },
+            template: {
+              type: "string",
+              example: "notification",
+              description: "Name of template in src/templates/emails/ without .html extension (e.g. 'acknowledgement', 'notification').",
+            },
+            templateData: {
+              type: "object",
+              example: {
+                title: "Schedule Reminder",
+                greeting: "Hello Candidate,",
+                message: "Your upcoming exam session will commence tomorrow at 10:00 AM.",
+                buttonText: "Go to Portal",
+                buttonUrl: "https://hvk.org/portal",
+                footerText: "If you have any questions, reach out to support@hvk.org",
+              },
+              description: "Key-value pairs to interpolate into the template placeholders.",
+            },
+            senderName: { type: "string", example: "HVK Support" },
+            senderEmail: { type: "string", example: "support@yourdomain.com" },
+          },
+        },
+        SendEmailSuccessData: {
+          type: "object",
+          properties: {
+            sent: { type: "boolean", example: true },
+            messageId: { type: "string", example: "<202609190100.12345678@smtp-relay.brevo.com>" },
+            to: {
+              oneOf: [
+                { type: "string", example: "priya@example.com" },
+                { type: "array", items: { type: "string" } },
+              ],
+            },
+            template: { type: "string", example: "notification" },
+          },
+        },
+        EmailTemplatesSuccessData: {
+          type: "object",
+          properties: {
+            templates: {
+              type: "array",
+              items: { type: "string" },
+              example: ["acknowledgement", "notification"],
+            },
+            count: { type: "number", example: 2 },
           },
         },
         ApiSuccess: {
