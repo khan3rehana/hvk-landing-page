@@ -129,7 +129,7 @@ export async function registerCandidate(req: Request, res: Response) {
       });
     }
 
-    const { name, email, phone, college, place } = parsed.data;
+    const { name, email, phone, college, place, city, state, pincode } = parsed.data;
 
     const existing = await Candidate.findOne({
       $or: [{ email: email.toLowerCase() }, { phone }],
@@ -144,7 +144,17 @@ export async function registerCandidate(req: Request, res: Response) {
       });
     }
 
-    const candidate = await Candidate.create({ name, email, phone, college, place, status: "pending" });
+    const candidate = await Candidate.create({
+      name,
+      email,
+      phone,
+      college,
+      place,
+      city,
+      state,
+      pincode,
+      status: "pending",
+    });
 
     return res.status(201).json({
       success: true,
@@ -424,7 +434,7 @@ export async function verifyRazorpayPayment(req: Request, res: Response) {
 export async function getCandidateStatus(req: Request, res: Response) {
   try {
     const candidate = await Candidate.findById(req.params.id).select(
-      "name email phone college place status createdAt"
+      "name email phone college place city state pincode status createdAt"
     );
 
     if (!candidate) {

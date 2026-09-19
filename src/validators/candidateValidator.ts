@@ -6,6 +6,10 @@ export const registrationSchema = z.object({
   phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(15, "Phone number is too long"),
   college: z.string().trim().min(2, "College is required"),
   place: z.string().trim().min(2, "Place is required"),
+  // Optional so existing clients (mobile app) that don't collect these keep working.
+  city: z.string().trim().min(1).optional(),
+  state: z.string().trim().min(1).optional(),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Pincode must be 6 digits").optional(),
 });
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 

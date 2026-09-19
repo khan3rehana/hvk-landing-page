@@ -8,6 +8,9 @@ export interface ICandidate extends Document {
   phone: string;
   college: string;
   place: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   status: CandidateStatus;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -32,6 +35,9 @@ const CandidateSchema = new Schema<ICandidate>(
     phone: { type: String, required: true, trim: true, unique: true },
     college: { type: String, required: true, trim: true },
     place: { type: String, required: true, trim: true },
+    city: { type: String, trim: true, default: null },
+    state: { type: String, trim: true, default: null },
+    pincode: { type: String, trim: true, default: null },
     status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
     razorpayOrderId: { type: String, default: null },
     razorpayPaymentId: { type: String, default: null },
