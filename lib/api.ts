@@ -1,6 +1,6 @@
 import type {
   ApiResponse,
-  CreateOrderData,
+  CreatePaymentLinkData,
   RegisterCandidateData,
   VerifyPaymentData,
 } from "@/types";
@@ -54,22 +54,26 @@ export function registerCandidate(payload: RegisterCandidatePayload) {
   });
 }
 
-export function createRazorpayOrder(candidateId: string) {
-  return apiFetch<CreateOrderData>("/api/razorpay/order", {
+/** Creates a hosted Razorpay Payment Link — no Razorpay key ever reaches the browser. */
+export function createPaymentLink(candidateId: string) {
+  return apiFetch<CreatePaymentLinkData>("/api/razorpay/payment-link", {
     method: "POST",
     body: JSON.stringify({ candidateId }),
   });
 }
 
-export interface VerifyPaymentPayload {
+export interface VerifyPaymentLinkPayload {
   candidateId: string;
-  razorpay_order_id: string;
   razorpay_payment_id: string;
+  razorpay_payment_link_id: string;
+  razorpay_payment_link_reference_id: string;
+  razorpay_payment_link_status: string;
   razorpay_signature: string;
 }
 
-export function verifyRazorpayPayment(payload: VerifyPaymentPayload) {
-  return apiFetch<VerifyPaymentData>("/api/razorpay/verify", {
+/** Called by the /registration/callback page once Razorpay redirects back. */
+export function verifyPaymentLink(payload: VerifyPaymentLinkPayload) {
+  return apiFetch<VerifyPaymentData>("/api/razorpay/payment-link/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });

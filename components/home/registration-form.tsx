@@ -22,29 +22,14 @@ import {
   candidateRegistrationSchema,
   type CandidateRegistrationInput,
 } from "@/lib/validations";
-import {
-  ApiError,
-  createRazorpayOrder,
-  registerCandidate,
-  verifyRazorpayPayment,
-} from "@/lib/api";
-import { loadRazorpayCheckout } from "@/lib/razorpay";
-import type { RazorpayPaymentSuccessResponse } from "@/types/razorpay";
+import { ApiError, createPaymentLink, registerCandidate } from "@/lib/api";
 
-type RegistrationStatus =
-  | "idle"
-  | "registering"
-  | "opening-payment"
-  | "verifying"
-  | "success"
-  | "error";
+type RegistrationStatus = "idle" | "registering" | "redirecting" | "error";
 
 const STATUS_LABEL: Record<RegistrationStatus, string> = {
   idle: "Register & Pay Registration Fee",
   registering: "Registering...",
-  "opening-payment": "Opening secure payment...",
-  verifying: "Verifying payment...",
-  success: "Registered",
+  redirecting: "Redirecting to secure payment...",
   error: "Register & Pay Registration Fee",
 };
 
@@ -56,7 +41,6 @@ export function RegistrationForm() {
     register,
     handleSubmit,
     control,
-    reset,
     formState: { errors },
   } = useForm<CandidateRegistrationInput>({
     resolver: zodResolver(candidateRegistrationSchema),
@@ -71,25 +55,6 @@ export function RegistrationForm() {
       pincode: "",
     },
   });
-
-  async function handlePaymentSuccess(
-    candidateId: string,
-    payment: RazorpayPaymentSuccessResponse
-  ) {
-    setStatus("verifying");
-    try {
-      await verifyRazorpayPayment({ candidateId, ...payment });
-      setStatus("success");
-      reset();
-    } catch (err) {
-      setStatus("error");
-      setErrorMessage(
-        err instanceof ApiError
-          ? err.message
-          : "Payment succeeded but verification failed. Please contact support."
-      );
-    }
-  }
 
   async function onSubmit(data: CandidateRegistrationInput) {
     setErrorMessage(null);
@@ -106,41 +71,13 @@ export function RegistrationForm() {
         pincode: data.pincode,
       });
 
-      setStatus("opening-payment");
-      const order = await createRazorpayOrder(candidateId);
+      setStatus("redirecting");
+      const { paymentLinkUrl } = await createPaymentLink(candidateId);
 
-      const isCheckoutReady = await loadRazorpayCheckout();
-      if (!isCheckoutReady || !window.Razorpay) {
-        throw new ApiError(
-          "Could not load the payment gateway. Please check your connection and try again."
-        );
-      }
-
-      const checkout = new window.Razorpay({
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: "HVK Infotech",
-        description: "Candidate Registration Fee",
-        order_id: order.orderId,
-        prefill: {
-          name: order.candidateName,
-          email: order.candidateEmail,
-          contact: order.candidatePhone,
-        },
-        theme: { color: "#1D6FE8" },
-        handler: (response) => {
-          void handlePaymentSuccess(candidateId, response);
-        },
-        modal: {
-          ondismiss: () => {
-            setStatus("error");
-            setErrorMessage("Payment was cancelled. You can try again anytime.");
-          },
-        },
-      });
-
-      checkout.open();
+      // Full-page redirect to Razorpay's hosted checkout — the frontend never loads
+      // Razorpay's SDK or sees a Razorpay key. Razorpay redirects back to
+      // /registration/callback once the customer finishes paying.
+      window.location.assign(paymentLinkUrl);
     } catch (err) {
       setStatus("error");
       setErrorMessage(
@@ -149,10 +86,7 @@ export function RegistrationForm() {
     }
   }
 
-  const isBusy =
-    status === "registering" ||
-    status === "opening-payment" ||
-    status === "verifying";
+  const isBusy = status === "registering" || status === "redirecting";
 
   return (
     <section id="registration" className="relative bg-app-bg py-14 dark:bg-dark-bg sm:py-16 lg:py-20">
@@ -327,7 +261,7 @@ export function RegistrationForm() {
 
               <button
                 type="submit"
-                disabled={isBusy || status === "success"}
+                disabled={isBusy}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-bright-blue px-6 py-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-blue disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <CreditCard className="h-4 w-4" aria-hidden="true" />
@@ -341,12 +275,6 @@ export function RegistrationForm() {
               </p>
 
               <div role="status" aria-live="polite" className="text-center text-sm">
-                {status === "success" ? (
-                  <p className="font-semibold text-green-600 dark:text-green-400">
-                    Payment received! Check your email for your registration
-                    confirmation and exam access details.
-                  </p>
-                ) : null}
                 {status === "error" && errorMessage ? (
                   <p className="font-semibold text-red-500 dark:text-red-400">
                     {errorMessage}

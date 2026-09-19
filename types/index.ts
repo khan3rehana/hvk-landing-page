@@ -71,14 +71,12 @@ export interface RegisterCandidateData {
   candidateId: string;
 }
 
-export interface CreateOrderData {
-  orderId: string;
-  amount: number;
-  currency: string;
-  keyId: string;
-  candidateName: string;
-  candidateEmail: string;
-  candidatePhone: string;
+/**
+ * The frontend never talks to Razorpay directly or sees a Razorpay key — the backend
+ * creates a hosted Payment Link and hands back only its URL to redirect to.
+ */
+export interface CreatePaymentLinkData {
+  paymentLinkUrl: string;
 }
 
 export interface VerifyPaymentData {
