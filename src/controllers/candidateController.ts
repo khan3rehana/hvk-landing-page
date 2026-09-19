@@ -9,6 +9,8 @@ import {
   registrationSchema,
   createOrderSchema,
   verifyPaymentSchema,
+  createPaymentLinkSchema,
+  verifyPaymentLinkSchema,
 } from "../validators/candidateValidator";
 
 /**
@@ -273,6 +275,244 @@ export async function createRazorpayOrder(req: Request, res: Response) {
       success: false,
       data: null,
       error: "Could not initiate payment. Please try again.",
+    });
+  }
+}
+
+/**
+ * @openapi
+ * /api/razorpay/payment-link:
+ *   post:
+ *     summary: >
+ *       Create a Razorpay Payment Link for a registered candidate. Unlike
+ *       /razorpay/order, this never exposes a Razorpay key to the client — the
+ *       browser is simply redirected to the returned hosted checkout URL and
+ *       Razorpay redirects back to FRONTEND_URL/registration/callback afterwards.
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreatePaymentLinkInput'
+ *     responses:
+ *       200:
+ *         description: Payment Link created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/CreatePaymentLinkSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
+ *       400:
+ *         description: Candidate already paid or invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       404:
+ *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Payment Link creation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ */
+export async function createPaymentLink(req: Request, res: Response) {
+  try {
+    const parsed = createPaymentLinkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: parsed.error.issues[0]?.message ?? "candidateId is required",
+      });
+    }
+
+    const { candidateId } = parsed.data;
+    const candidate = await Candidate.findById(candidateId);
+
+    if (!candidate) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
+
+    if (candidate.status === "paid") {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: "This candidate has already paid.",
+      });
+    }
+
+    const paymentLink = await razorpay.paymentLink.create({
+      amount: env.RAZORPAY_REGISTRATION_FEE,
+      currency: "INR",
+      accept_partial: false,
+      description: "HVK Infotech Candidate Registration Fee",
+      customer: {
+        name: candidate.name,
+        email: candidate.email,
+        contact: candidate.phone,
+      },
+      notify: { sms: false, email: false },
+      reference_id: candidateId,
+      callback_url: `${env.FRONTEND_URL}/registration/callback`,
+      callback_method: "get",
+      notes: { candidateId },
+    });
+
+    candidate.razorpayPaymentLinkId = paymentLink.id;
+    await candidate.save();
+
+    return res.status(200).json({
+      success: true,
+      data: { paymentLinkUrl: paymentLink.short_url },
+      error: null,
+    });
+  } catch (err) {
+    console.error("Payment link creation error:", err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: "Could not initiate payment. Please try again.",
+    });
+  }
+}
+
+/**
+ * @openapi
+ * /api/razorpay/payment-link/verify:
+ *   post:
+ *     summary: >
+ *       Verify a Razorpay Payment Link callback and confirm registration. Called by
+ *       the web app's /registration/callback page with the query params Razorpay
+ *       appended to the redirect.
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyPaymentLinkInput'
+ *     responses:
+ *       200:
+ *         description: Payment verified, candidate marked paid, acknowledgement email sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/VerifyPaymentSuccessData'
+ *                 error:
+ *                   type: "null"
+ *                   example: null
+ *       400:
+ *         description: Invalid signature, payment link mismatch, or payment not completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       404:
+ *         description: Candidate not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ *       500:
+ *         description: Payment verification failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiError'
+ */
+export async function verifyPaymentLink(req: Request, res: Response) {
+  try {
+    const parsed = verifyPaymentLinkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: parsed.error.issues[0]?.message ?? "Invalid payment payload",
+      });
+    }
+
+    const {
+      candidateId,
+      razorpay_payment_id,
+      razorpay_payment_link_id,
+      razorpay_payment_link_reference_id,
+      razorpay_payment_link_status,
+      razorpay_signature,
+    } = parsed.data;
+
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
+
+    if (
+      candidate.razorpayPaymentLinkId !== razorpay_payment_link_id ||
+      razorpay_payment_link_reference_id !== candidateId
+    ) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: "Payment link mismatch for this candidate",
+      });
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha256", env.RAZORPAY_KEY_SECRET)
+      .update(
+        `${razorpay_payment_link_id}|${razorpay_payment_link_reference_id}|${razorpay_payment_link_status}|${razorpay_payment_id}`
+      )
+      .digest("hex");
+
+    const isSignatureValid = expectedSignature === razorpay_signature;
+
+    if (!isSignatureValid || razorpay_payment_link_status !== "paid") {
+      candidate.status = "failed";
+      await candidate.save();
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: "Payment verification failed. Please try again.",
+      });
+    }
+
+    const { emailSent } = await finalizeSuccessfulPayment(candidate, razorpay_payment_id);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        status: "paid",
+        candidateId: candidate._id.toString(),
+        emailSent,
+      },
+      error: null,
+    });
+  } catch (err) {
+    console.error("Payment link verification error:", err);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: "Something went wrong verifying payment. Please contact support.",
     });
   }
 }
@@ -591,6 +831,13 @@ interface RazorpayWebhookPayload {
         status: string;
       };
     };
+    payment_link?: {
+      entity: {
+        id: string;
+        reference_id: string;
+        status: string;
+      };
+    };
   };
 }
 
@@ -673,17 +920,32 @@ export async function handleRazorpayWebhook(req: Request, res: Response) {
 
     const event = req.body as RazorpayWebhookPayload;
     const payment = event.payload?.payment?.entity;
+    const paymentLink = event.payload?.payment_link?.entity;
 
-    // Only payment.captured moves a candidate to "paid" — other subscribed events are
+    // Only these two events move a candidate to "paid" — other subscribed events are
     // acknowledged (200) so Razorpay doesn't retry, but otherwise ignored.
-    if (event.event !== "payment.captured" || !payment) {
+    // - payment.captured: fired for both the Orders flow (mobile) and Payment Links flow (web).
+    // - payment_link.paid: Payment Links-specific, used as a fallback to look up the
+    //   candidate when a Payment Link's underlying order was never recorded on our side.
+    let candidate: ICandidate | null = null;
+
+    if (event.event === "payment.captured" && payment) {
+      candidate = await Candidate.findOne({ razorpayOrderId: payment.order_id });
+      if (!candidate && paymentLink) {
+        candidate = await Candidate.findOne({ razorpayPaymentLinkId: paymentLink.id });
+      }
+    } else if (event.event === "payment_link.paid" && paymentLink && payment) {
+      candidate = await Candidate.findOne({ razorpayPaymentLinkId: paymentLink.id });
+    } else {
       return res.status(200).json({ success: true, data: { received: true }, error: null });
     }
 
-    const candidate = await Candidate.findOne({ razorpayOrderId: payment.order_id });
-    if (!candidate) {
+    if (!candidate || !payment) {
       // Nothing to reconcile against (yet, or ever) — acknowledge so Razorpay stops retrying.
-      console.error("Webhook payment.captured for unknown order:", payment.order_id);
+      console.error(`Webhook ${event.event} for unknown candidate`, {
+        orderId: payment?.order_id,
+        paymentLinkId: paymentLink?.id,
+      });
       return res.status(200).json({ success: true, data: { received: true }, error: null });
     }
 

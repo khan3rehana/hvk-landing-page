@@ -94,6 +94,46 @@ const options: swaggerJSDoc.Options = {
             emailSent: { type: "boolean", example: true },
           },
         },
+        CreatePaymentLinkInput: {
+          type: "object",
+          required: ["candidateId"],
+          properties: {
+            candidateId: { type: "string", example: "6aad9154d93390cdd2688d2d" },
+          },
+        },
+        CreatePaymentLinkSuccessData: {
+          type: "object",
+          properties: {
+            paymentLinkUrl: {
+              type: "string",
+              example: "https://rzp.io/i/aBc123Xy",
+              description: "Hosted Razorpay checkout URL — redirect the browser here directly.",
+            },
+          },
+        },
+        VerifyPaymentLinkInput: {
+          type: "object",
+          required: [
+            "candidateId",
+            "razorpay_payment_id",
+            "razorpay_payment_link_id",
+            "razorpay_payment_link_reference_id",
+            "razorpay_payment_link_status",
+            "razorpay_signature",
+          ],
+          properties: {
+            candidateId: { type: "string", example: "6aad9154d93390cdd2688d2d" },
+            razorpay_payment_id: { type: "string", example: "pay_EkW87654321" },
+            razorpay_payment_link_id: { type: "string", example: "plink_EkW12345678" },
+            razorpay_payment_link_reference_id: {
+              type: "string",
+              example: "6aad9154d93390cdd2688d2d",
+              description: "Set to candidateId when the Payment Link was created.",
+            },
+            razorpay_payment_link_status: { type: "string", example: "paid" },
+            razorpay_signature: { type: "string", example: "9ef5421c0b347b5..." },
+          },
+        },
         CandidateStatusData: {
           type: "object",
           properties: {

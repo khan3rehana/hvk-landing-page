@@ -34,4 +34,7 @@ export const env = {
   ADMIN_API_KEY: process.env.ADMIN_API_KEY || "",
   // Comma-separated list of allowed origins (web app, mobile app dev tunnels, etc.)
   CORS_ORIGINS: (process.env.CORS_ORIGINS || "*").split(",").map((o) => o.trim()),
+  // Public web app origin. Used to build the Razorpay Payment Link's callback_url so
+  // Razorpay redirects the browser back to our own domain after checkout.
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
 };

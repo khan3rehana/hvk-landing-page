@@ -13,6 +13,7 @@ export interface ICandidate extends Document {
   pincode?: string;
   status: CandidateStatus;
   razorpayOrderId?: string;
+  razorpayPaymentLinkId?: string;
   razorpayPaymentId?: string;
   acknowledgementEmailSent: boolean;
   examLink?: string;
@@ -40,6 +41,7 @@ const CandidateSchema = new Schema<ICandidate>(
     pincode: { type: String, trim: true, default: null },
     status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
     razorpayOrderId: { type: String, default: null },
+    razorpayPaymentLinkId: { type: String, default: null },
     razorpayPaymentId: { type: String, default: null },
     acknowledgementEmailSent: { type: Boolean, default: false },
     examLink: { type: String, default: null },

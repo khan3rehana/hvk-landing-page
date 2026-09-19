@@ -24,9 +24,11 @@ directly into Postman / their codegen tooling.
 |---|---|---|
 | GET | /health | Health check |
 | POST | /api/register | Create pending candidate (blocks duplicate email/phone) |
-| POST | /api/razorpay/order | Create Razorpay order for a candidate |
-| POST | /api/razorpay/verify | Verify payment signature, mark paid, send email |
-| POST | /api/razorpay/webhook | Razorpay server-to-server webhook (payment.captured) — confirms payment even if the client never calls /verify |
+| POST | /api/razorpay/order | Create Razorpay order for a candidate — Orders flow, used by clients (mobile app) that embed the Razorpay SDK directly with a key_id |
+| POST | /api/razorpay/verify | Verify Orders-flow payment signature, mark paid, send email |
+| POST | /api/razorpay/payment-link | Create a Razorpay Payment Link for a candidate — Payment Links flow, used by the web app. Never exposes a Razorpay key to the browser; the client just redirects to the returned URL |
+| POST | /api/razorpay/payment-link/verify | Verify a Payment Link callback (called by the web app's /registration/callback page), mark paid, send email |
+| POST | /api/razorpay/webhook | Razorpay server-to-server webhook (payment.captured, payment_link.paid) — confirms payment even if the client never calls /verify or /payment-link/verify |
 | GET | /api/candidates/:id | Get candidate status (used by mobile app) |
 
 ## Scripts

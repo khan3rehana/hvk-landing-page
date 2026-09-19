@@ -25,3 +25,18 @@ export const verifyPaymentSchema = z.object({
   razorpay_signature: z.string().min(1),
 });
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+
+export const createPaymentLinkSchema = z.object({
+  candidateId: z.string().min(1, "candidateId is required"),
+});
+export type CreatePaymentLinkInput = z.infer<typeof createPaymentLinkSchema>;
+
+export const verifyPaymentLinkSchema = z.object({
+  candidateId: z.string().min(1, "candidateId is required"),
+  razorpay_payment_id: z.string().min(1),
+  razorpay_payment_link_id: z.string().min(1),
+  razorpay_payment_link_reference_id: z.string().min(1),
+  razorpay_payment_link_status: z.string().min(1),
+  razorpay_signature: z.string().min(1),
+});
+export type VerifyPaymentLinkInput = z.infer<typeof verifyPaymentLinkSchema>;
