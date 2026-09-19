@@ -13,6 +13,25 @@ import {
   verifyPaymentLinkSchema,
 } from "../validators/candidateValidator";
 
+// Constant-time HMAC comparison so response timing can't leak the signature byte-by-byte.
+function isValidSignature(expected: string, provided: string): boolean {
+  const expectedBuf = Buffer.from(expected);
+  const providedBuf = Buffer.from(provided);
+  return expectedBuf.length === providedBuf.length && crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+// Mongo unique-index violation — can still occur even after a pre-check findOne()
+// when two requests for the same email/phone race each other.
+function isDuplicateKeyError(err: unknown): err is { code: 11000; keyPattern?: Record<string, unknown> } {
+  return typeof err === "object" && err !== null && (err as { code?: number }).code === 11000;
+}
+
+// Thrown by Mongoose when a route param isn't a valid ObjectId — treat it as "not found"
+// rather than letting it fall through to a generic 500.
+function isCastError(err: unknown): boolean {
+  return err instanceof Error && err.name === "CastError";
+}
+
 /**
  * Shared by /razorpay/verify (client-driven) and /razorpay/webhook (server-to-server):
  * marks a candidate paid, requests their exam access link, and emails the receipt.
@@ -164,6 +183,14 @@ export async function registerCandidate(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      const duplicateField = Object.keys(err.keyPattern ?? {})[0] === "phone" ? "phone" : "email";
+      return res.status(409).json({
+        success: false,
+        data: null,
+        error: `A registration already exists with this ${duplicateField}.`,
+      });
+    }
     console.error("Registration error:", err);
     return res.status(500).json({
       success: false,
@@ -270,6 +297,9 @@ export async function createRazorpayOrder(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     console.error("Order creation error:", err);
     return res.status(500).json({
       success: false,
@@ -382,6 +412,9 @@ export async function createPaymentLink(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     console.error("Payment link creation error:", err);
     return res.status(500).json({
       success: false,
@@ -484,7 +517,7 @@ export async function verifyPaymentLink(req: Request, res: Response) {
       )
       .digest("hex");
 
-    const isSignatureValid = expectedSignature === razorpay_signature;
+    const isSignatureValid = isValidSignature(expectedSignature, razorpay_signature);
 
     if (!isSignatureValid || razorpay_payment_link_status !== "paid") {
       candidate.status = "failed";
@@ -508,6 +541,9 @@ export async function verifyPaymentLink(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     console.error("Payment link verification error:", err);
     return res.status(500).json({
       success: false,
@@ -582,7 +618,7 @@ export async function verifyRazorpayPayment(req: Request, res: Response) {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    const isSignatureValid = expectedSignature === razorpay_signature;
+    const isSignatureValid = isValidSignature(expectedSignature, razorpay_signature);
 
     const candidate = await Candidate.findById(candidateId);
     if (!candidate) {
@@ -619,6 +655,9 @@ export async function verifyRazorpayPayment(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     console.error("Payment verification error:", err);
     return res.status(500).json({
       success: false,
@@ -683,6 +722,9 @@ export async function getCandidateStatus(req: Request, res: Response) {
 
     return res.status(200).json({ success: true, data: candidate, error: null });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     return res.status(500).json({ success: false, data: null, error: "Could not fetch candidate" });
   }
 }
@@ -814,6 +856,9 @@ export async function resendExamAccessLink(req: Request, res: Response) {
       error: null,
     });
   } catch (err) {
+    if (isCastError(err)) {
+      return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
+    }
     console.error("Resend exam link error:", err);
     return res
       .status(500)

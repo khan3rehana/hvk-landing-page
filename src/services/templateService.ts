@@ -70,6 +70,19 @@ export function hasTemplate(templateName: string): boolean {
 }
 
 /**
+ * Escapes HTML special characters so untrusted values (e.g. a candidate-supplied
+ * name) can't inject markup/scripts into the rendered email.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Renders an email template by substituting variables and evaluating simple conditionals.
  * Supports:
  * - `{{key}}` -> value of data[key]
@@ -106,7 +119,7 @@ export function renderTemplate(
   // 2. Process variable placeholders: {{key}}
   html = html.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key) => {
     const value = mergedData[key];
-    return value !== undefined && value !== null ? String(value) : "";
+    return value !== undefined && value !== null ? escapeHtml(String(value)) : "";
   });
 
   return html;
