@@ -70,7 +70,7 @@ export function Header() {
           <ThemeToggle />
 
           <Link
-            href="#registration"
+            href="/#registration"
             className={cn(buttonVariants({ variant: "primary" }), "hidden lg:inline-flex")}
           >
             Register Now
@@ -112,7 +112,7 @@ export function Header() {
             </Link>
           ))}
           <Link
-            href="#registration"
+            href="/#registration"
             onClick={() => setMobileOpen(false)}
             className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-bright-blue px-5 py-3 text-sm font-semibold text-white hover:bg-primary-blue"
           >

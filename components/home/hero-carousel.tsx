@@ -58,7 +58,7 @@ export function HeroCarousel() {
       role="region"
       aria-roledescription="carousel"
       aria-label="Featured highlights"
-      className="relative w-full overflow-hidden bg-navy"
+      className="relative w-full overflow-hidden bg-app-bg dark:bg-navy"
     >
       <div className="embla" ref={emblaRef}>
         <div className="flex">

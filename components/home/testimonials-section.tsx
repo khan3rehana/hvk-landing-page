@@ -34,17 +34,17 @@ export function TestimonialsSection() {
   }, [emblaApi]);
 
   return (
-    <section id="testimonials" className="bg-navy py-16 sm:py-20 lg:py-24">
+    <section id="testimonials" className="bg-light-blue py-16 dark:bg-navy sm:py-20 lg:py-24">
       <div className="container">
         <div className="mx-auto max-w-2xl text-center">
           <div className="flex items-center justify-center gap-3">
             <span className="h-px w-8 bg-bright-blue" aria-hidden="true" />
-            <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
+            <h2 className="text-2xl font-extrabold text-navy dark:text-white sm:text-3xl">
               What Our Students Say
             </h2>
             <span className="h-px w-8 bg-bright-blue" aria-hidden="true" />
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-white/70 sm:text-base">
+          <p className="mt-3 text-sm leading-relaxed text-muted dark:text-white/70 sm:text-base">
             Real stories from our learners who are building successful
             careers with HVK Infotech.
           </p>
@@ -68,7 +68,7 @@ export function TestimonialsSection() {
             type="button"
             onClick={() => emblaApi?.scrollPrev()}
             aria-label="Previous testimonial"
-            className="absolute -left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:-left-4 sm:flex lg:-left-5"
+            className="absolute -left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-navy shadow-card transition-colors hover:bg-light-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue dark:bg-white/10 dark:text-white dark:shadow-none dark:hover:bg-white/20 dark:focus-visible:ring-white sm:-left-4 sm:flex lg:-left-5"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -76,7 +76,7 @@ export function TestimonialsSection() {
             type="button"
             onClick={() => emblaApi?.scrollNext()}
             aria-label="Next testimonial"
-            className="absolute -right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:-right-4 sm:flex lg:-right-5"
+            className="absolute -right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-navy shadow-card transition-colors hover:bg-light-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bright-blue dark:bg-white/10 dark:text-white dark:shadow-none dark:hover:bg-white/20 dark:focus-visible:ring-white sm:-right-4 sm:flex lg:-right-5"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -93,7 +93,7 @@ export function TestimonialsSection() {
                   "h-2.5 rounded-full transition-all duration-300",
                   selectedIndex === index
                     ? "w-7 bg-bright-blue"
-                    : "w-2.5 bg-white/30 hover:bg-white/50"
+                    : "w-2.5 bg-navy/20 hover:bg-navy/40 dark:bg-white/30 dark:hover:bg-white/50"
                 )}
               />
             ))}

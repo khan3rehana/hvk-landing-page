@@ -36,11 +36,10 @@ export const ABOUT_IMAGES: string[] = [
 
 export const NAV_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
-  { label: "About", href: "#about" },
-  { label: "Services", href: "#services" },
-  { label: "Events", href: "#events" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "About", href: "/#about" },
+  { label: "Services", href: "/#services" },
+  { label: "Testimonials", href: "/#testimonials" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 export const SOCIAL_LINKS: SocialLink[] = [
@@ -60,7 +59,7 @@ export const HERO_SLIDES: HeroSlide[] = [
     description:
       "Practical learning, real-world projects and career opportunities to help you become industry ready.",
     ctaLabel: "Explore Opportunities",
-    ctaHref: "#services",
+    ctaHref: "/#services",
     image: "/images/hero/hero-1.jpg",
   },
   {
@@ -72,7 +71,7 @@ export const HERO_SLIDES: HeroSlide[] = [
     description:
       "Gain practical learning and real-world project experience designed by industry experts to accelerate your career.",
     ctaLabel: "Explore Programs",
-    ctaHref: "#services",
+    ctaHref: "/#services",
     image: "/images/hero/hero-2.jpg",
   },
   {
@@ -84,7 +83,7 @@ export const HERO_SLIDES: HeroSlide[] = [
     description:
       "Get access to internships, dedicated placement support and career guidance from experienced mentors.",
     ctaLabel: "Register Now",
-    ctaHref: "#registration",
+    ctaHref: "/#registration",
     image: "/images/hero/hero-3.jpg",
   },
 ];
@@ -175,16 +174,15 @@ export const TESTIMONIALS: TestimonialItem[] = [
 
 export const QUICK_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
-  { label: "About Us", href: "#about" },
-  { label: "Services", href: "#services" },
-  { label: "Events", href: "#events" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "About Us", href: "/#about" },
+  { label: "Services", href: "/#services" },
+  { label: "Testimonials", href: "/#testimonials" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 export const FOOTER_SERVICE_LINKS: NavLink[] = SERVICES.map((service) => ({
   label: service.title,
-  href: `#services`,
+  href: `/#services`,
 }));
 
 export const FOOTER_LINK_GROUPS: FooterLinkGroupData[] = [

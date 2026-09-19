@@ -102,7 +102,11 @@ const SearchableSelect = React.forwardRef<
           setActiveIndex(0);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={onBlur}
+        onBlur={() => {
+          setOpen(false);
+          setQuery(value);
+          onBlur?.();
+        }}
         onKeyDown={handleKeyDown}
       />
       <ChevronDown
