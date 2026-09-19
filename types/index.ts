@@ -59,3 +59,30 @@ export interface CandidateRegistration {
   state: string;
   pincode: string;
 }
+
+/** Envelope every hvk-backend endpoint responds with. */
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+}
+
+export interface RegisterCandidateData {
+  candidateId: string;
+}
+
+export interface CreateOrderData {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone: string;
+}
+
+export interface VerifyPaymentData {
+  status: "paid";
+  candidateId: string;
+  emailSent: boolean;
+}

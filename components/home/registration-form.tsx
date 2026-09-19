@@ -22,23 +22,35 @@ import {
   candidateRegistrationSchema,
   type CandidateRegistrationInput,
 } from "@/lib/validations";
+import {
+  ApiError,
+  createRazorpayOrder,
+  registerCandidate,
+  verifyRazorpayPayment,
+} from "@/lib/api";
+import { loadRazorpayCheckout } from "@/lib/razorpay";
+import type { RazorpayPaymentSuccessResponse } from "@/types/razorpay";
 
-/**
- * Mock submit — swap this for a real call to POST /api/v1/registrations
- * (and a payment step) once the backend and payment provider are ready.
- */
-async function submitRegistration(
-  data: CandidateRegistrationInput
-): Promise<{ success: boolean }> {
-  const payload = JSON.stringify(data);
-  await new Promise((resolve) => setTimeout(resolve, 900));
-  return { success: payload.length > 0 };
-}
+type RegistrationStatus =
+  | "idle"
+  | "registering"
+  | "opening-payment"
+  | "verifying"
+  | "success"
+  | "error";
+
+const STATUS_LABEL: Record<RegistrationStatus, string> = {
+  idle: "Register & Pay Registration Fee",
+  registering: "Registering...",
+  "opening-payment": "Opening secure payment...",
+  verifying: "Verifying payment...",
+  success: "Registered",
+  error: "Register & Pay Registration Fee",
+};
 
 export function RegistrationForm() {
-  const [status, setStatus] = React.useState<
-    "idle" | "submitting" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = React.useState<RegistrationStatus>("idle");
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   const {
     register,
@@ -60,20 +72,87 @@ export function RegistrationForm() {
     },
   });
 
-  async function onSubmit(data: CandidateRegistrationInput) {
-    setStatus("submitting");
+  async function handlePaymentSuccess(
+    candidateId: string,
+    payment: RazorpayPaymentSuccessResponse
+  ) {
+    setStatus("verifying");
     try {
-      const result = await submitRegistration(data);
-      if (result.success) {
-        setStatus("success");
-        reset();
-      } else {
-        setStatus("error");
-      }
-    } catch {
+      await verifyRazorpayPayment({ candidateId, ...payment });
+      setStatus("success");
+      reset();
+    } catch (err) {
       setStatus("error");
+      setErrorMessage(
+        err instanceof ApiError
+          ? err.message
+          : "Payment succeeded but verification failed. Please contact support."
+      );
     }
   }
+
+  async function onSubmit(data: CandidateRegistrationInput) {
+    setErrorMessage(null);
+    setStatus("registering");
+    try {
+      const { candidateId } = await registerCandidate({
+        name: data.fullName,
+        email: data.email,
+        phone: data.contactNumber,
+        college: data.college,
+        place: data.place,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+      });
+
+      setStatus("opening-payment");
+      const order = await createRazorpayOrder(candidateId);
+
+      const isCheckoutReady = await loadRazorpayCheckout();
+      if (!isCheckoutReady || !window.Razorpay) {
+        throw new ApiError(
+          "Could not load the payment gateway. Please check your connection and try again."
+        );
+      }
+
+      const checkout = new window.Razorpay({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "HVK Infotech",
+        description: "Candidate Registration Fee",
+        order_id: order.orderId,
+        prefill: {
+          name: order.candidateName,
+          email: order.candidateEmail,
+          contact: order.candidatePhone,
+        },
+        theme: { color: "#1D6FE8" },
+        handler: (response) => {
+          void handlePaymentSuccess(candidateId, response);
+        },
+        modal: {
+          ondismiss: () => {
+            setStatus("error");
+            setErrorMessage("Payment was cancelled. You can try again anytime.");
+          },
+        },
+      });
+
+      checkout.open();
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(
+        err instanceof ApiError ? err.message : "Something went wrong. Please try again."
+      );
+    }
+  }
+
+  const isBusy =
+    status === "registering" ||
+    status === "opening-payment" ||
+    status === "verifying";
 
   return (
     <section id="registration" className="relative bg-app-bg py-14 dark:bg-dark-bg sm:py-16 lg:py-20">
@@ -248,13 +327,11 @@ export function RegistrationForm() {
 
               <button
                 type="submit"
-                disabled={status === "submitting"}
+                disabled={isBusy || status === "success"}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-bright-blue px-6 py-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-blue disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <CreditCard className="h-4 w-4" aria-hidden="true" />
-                {status === "submitting"
-                  ? "Processing..."
-                  : "Register & Pay Registration Fee"}
+                {STATUS_LABEL[status]}
                 <span aria-hidden="true">→</span>
               </button>
 
@@ -266,12 +343,13 @@ export function RegistrationForm() {
               <div role="status" aria-live="polite" className="text-center text-sm">
                 {status === "success" ? (
                   <p className="font-semibold text-green-600 dark:text-green-400">
-                    Thank you! Your registration has been received.
+                    Payment received! Check your email for your registration
+                    confirmation and exam access details.
                   </p>
                 ) : null}
-                {status === "error" ? (
+                {status === "error" && errorMessage ? (
                   <p className="font-semibold text-red-500 dark:text-red-400">
-                    Something went wrong. Please try again.
+                    {errorMessage}
                   </p>
                 ) : null}
               </div>
