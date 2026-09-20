@@ -7,7 +7,8 @@ import {
   verifyPaymentLink,
   handleRazorpayWebhook,
   getCandidateStatus,
-  resendExamAccessLink,
+  resetExamAccess,
+  verifyExamAccess,
 } from "../controllers/candidateController";
 import { requireAdminKey } from "../middleware/adminAuth";
 
@@ -22,6 +23,10 @@ router.post("/razorpay/payment-link", createPaymentLink);
 router.post("/razorpay/payment-link/verify", verifyPaymentLink);
 router.post("/razorpay/webhook", handleRazorpayWebhook);
 router.get("/candidates/:id", getCandidateStatus);
-router.post("/candidates/:id/resend-exam-link", requireAdminKey, resendExamAccessLink);
+// Public — redeems a one-time exam-access magic link token (called by /exam/access/[token]).
+router.post("/exam-access/verify", verifyExamAccess);
+router.post("/candidates/:id/reset-exam-access", requireAdminKey, resetExamAccess);
+// Legacy alias, kept for backward compatibility with any existing callers.
+router.post("/candidates/:id/resend-exam-link", requireAdminKey, resetExamAccess);
 
 export default router;

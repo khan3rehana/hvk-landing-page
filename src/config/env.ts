@@ -29,6 +29,12 @@ export const env = {
   // hvk-exam-backend base URL and shared secret (server-to-server auth)
   EXAM_API_URL: process.env.EXAM_API_URL || "",
   INTERNAL_EXAM_API_KEY: process.env.INTERNAL_EXAM_API_KEY || "",
+  // Temporary stand-in for the real exam destination while hvk-exam-backend isn't live yet.
+  // Used only when requestExamAccessLink() fails to return a link.
+  EXAM_PLACEHOLDER_URL:
+    process.env.EXAM_PLACEHOLDER_URL || "https://hvk-infotech.example.com/exam/start",
+  // How long an issued exam-access magic link stays redeemable before it expires.
+  EXAM_ACCESS_TOKEN_TTL_HOURS: Number(process.env.EXAM_ACCESS_TOKEN_TTL_HOURS ?? "168"),
   // Shared secret for internal/admin-only routes (e.g. resend-exam-link). Optional so the
   // app still boots without it, but those routes refuse requests until it's set.
   ADMIN_API_KEY: process.env.ADMIN_API_KEY || "",

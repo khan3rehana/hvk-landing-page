@@ -140,6 +140,33 @@ export async function sendAcknowledgementEmail({
   });
 }
 
+interface ExamAccessResetEmailParams {
+  toEmail: string;
+  candidateName: string;
+  examLink: string;
+}
+
+/**
+ * Sends a fresh exam-access magic link after an admin reset (previous link, if any,
+ * is now permanently invalid). Reuses the 'acknowledgement' template's exam-link
+ * section but with its own subject so it reads as a reset, not a duplicate receipt.
+ */
+export async function sendExamAccessResetEmail({
+  toEmail,
+  candidateName,
+  examLink,
+}: ExamAccessResetEmailParams): Promise<{ success: boolean; error?: string }> {
+  return sendEmail({
+    to: [{ email: toEmail, name: candidateName }],
+    subject: "Your HVK Exam Access Link Has Been Reset",
+    template: "exam-access-reset",
+    templateData: {
+      candidateName,
+      examLink,
+    },
+  });
+}
+
 export interface CreateCampaignParams {
   name: string;
   subject: string;

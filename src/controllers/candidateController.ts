@@ -3,14 +3,20 @@ import { Request, Response } from "express";
 import Candidate, { ICandidate } from "../models/Candidate";
 import { razorpay } from "../config/razorpay";
 import { env } from "../config/env";
-import { sendAcknowledgementEmail } from "../services/emailService";
+import { sendAcknowledgementEmail, sendExamAccessResetEmail } from "../services/emailService";
 import { requestExamAccessLink } from "../services/examAccessService";
+import {
+  issueExamAccessToken,
+  buildExamAccessUrl,
+  hashToken,
+} from "../services/examAccessTokenService";
 import {
   registrationSchema,
   createOrderSchema,
   verifyPaymentSchema,
   createPaymentLinkSchema,
   verifyPaymentLinkSchema,
+  examAccessVerifySchema,
 } from "../validators/candidateValidator";
 
 // Constant-time HMAC comparison so response timing can't leak the signature byte-by-byte.
@@ -62,24 +68,28 @@ async function finalizeSuccessfulPayment(
 
   candidate = claimed;
 
-  // Request a one-time exam access link — failure here must not fail the payment response.
-  // Persisted on the candidate so a failed attempt can be recovered later via
-  // POST /candidates/:id/resend-exam-link instead of silently losing the link.
+  // Request the real exam destination — failure here must not fail the payment response.
+  // Falls back to a placeholder while hvk-exam-backend isn't live yet, so the magic-link
+  // flow below always has something real to redirect to once redeemed.
   const examAccess = await requestExamAccessLink(candidate.email, candidate._id.toString());
   if (!examAccess.success) {
-    console.error("Exam access link creation failed:", examAccess.error);
-  } else if (examAccess.link) {
-    candidate.examLink = examAccess.link;
-    candidate.examLinkIssuedAt = new Date();
-    await candidate.save();
+    console.error("Exam access link creation failed, using placeholder:", examAccess.error);
   }
+  candidate.examLink = examAccess.link ?? env.EXAM_PLACEHOLDER_URL;
+  candidate.examLinkIssuedAt = new Date();
+  await candidate.save();
+
+  // Mint our own one-time magic link that gates the real exam destination above —
+  // this is what actually gets emailed, never candidate.examLink directly.
+  const accessToken = await issueExamAccessToken(candidate);
+  const examAccessUrl = buildExamAccessUrl(accessToken);
 
   const emailResult = await sendAcknowledgementEmail({
     toEmail: candidate.email,
     candidateName: candidate.name,
     paymentId,
     amountPaise: env.RAZORPAY_REGISTRATION_FEE,
-    examLink: examAccess.link,
+    examLink: examAccessUrl,
   });
 
   if (emailResult.success) {
@@ -731,14 +741,13 @@ export async function getCandidateStatus(req: Request, res: Response) {
 
 /**
  * @openapi
- * /api/candidates/{id}/resend-exam-link:
+ * /api/candidates/{id}/reset-exam-access:
  *   post:
  *     summary: >
- *       Recovery endpoint for candidates who paid but never got an exam link — e.g. the
- *       hvk-exam-backend call in finalizeSuccessfulPayment failed, or the acknowledgement
- *       email bounced. Reuses the previously issued link if one is already on record
- *       instead of requesting a new one, then resends the email. Admin-only —
- *       requires the x-admin-api-key header.
+ *       Mints a fresh one-time exam-access magic link for a candidate and emails it,
+ *       permanently invalidating whatever link (used or unused) they had before. Also
+ *       mounted at the legacy path POST /candidates/:id/resend-exam-link for backward
+ *       compatibility. Admin-only — requires the x-admin-api-key header.
  *     tags: [Candidates]
  *     security:
  *       - AdminApiKeyAuth: []
@@ -754,55 +763,17 @@ export async function getCandidateStatus(req: Request, res: Response) {
  *         required: true
  *         schema:
  *           type: string
- *         description: Admin secret key configured on server
  *     responses:
  *       200:
- *         description: Exam link ensured and acknowledgement email (re)sent
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   $ref: '#/components/schemas/ResendExamLinkSuccessData'
- *                 error:
- *                   type: "null"
- *                   example: null
+ *         description: New exam access token issued and email (re)sent
  *       400:
  *         description: Candidate has not completed payment
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiError'
  *       401:
  *         description: Missing or invalid x-admin-api-key
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiError'
  *       404:
  *         description: Candidate not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiError'
- *       500:
- *         description: ADMIN_API_KEY not configured on the server
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiError'
- *       502:
- *         description: Exam access service could not issue a link
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ApiError'
  */
-export async function resendExamAccessLink(req: Request, res: Response) {
+export async function resetExamAccess(req: Request, res: Response) {
   try {
     const candidate = await Candidate.findById(req.params.id);
     if (!candidate) {
@@ -817,52 +788,126 @@ export async function resendExamAccessLink(req: Request, res: Response) {
       });
     }
 
-    let link = candidate.examLink;
-
-    if (!link) {
+    if (!candidate.examLink) {
       const examAccess = await requestExamAccessLink(candidate.email, candidate._id.toString());
-      if (!examAccess.success || !examAccess.link) {
-        return res.status(502).json({
-          success: false,
-          data: null,
-          error: examAccess.error ?? "Could not create exam access link",
-        });
-      }
-
-      link = examAccess.link;
-      candidate.examLink = link;
+      candidate.examLink = examAccess.link ?? env.EXAM_PLACEHOLDER_URL;
       candidate.examLinkIssuedAt = new Date();
       await candidate.save();
     }
 
-    const emailResult = await sendAcknowledgementEmail({
+    const accessToken = await issueExamAccessToken(candidate);
+    const examAccessUrl = buildExamAccessUrl(accessToken);
+
+    const emailResult = await sendExamAccessResetEmail({
       toEmail: candidate.email,
       candidateName: candidate.name,
-      paymentId: candidate.razorpayPaymentId ?? "",
-      amountPaise: env.RAZORPAY_REGISTRATION_FEE,
-      examLink: link,
+      examLink: examAccessUrl,
     });
 
-    if (emailResult.success) {
-      candidate.acknowledgementEmailSent = true;
-      await candidate.save();
-    } else {
-      console.error("Resend acknowledgement email failed:", emailResult.error);
+    if (!emailResult.success) {
+      console.error("Exam access reset email failed:", emailResult.error);
     }
 
     return res.status(200).json({
       success: true,
-      data: { emailSent: emailResult.success },
+      data: { emailSent: emailResult.success, examAccessUrl },
       error: null,
     });
   } catch (err) {
     if (isCastError(err)) {
       return res.status(404).json({ success: false, data: null, error: "Candidate not found" });
     }
-    console.error("Resend exam link error:", err);
+    console.error("Reset exam access error:", err);
     return res
       .status(500)
-      .json({ success: false, data: null, error: "Could not resend exam access link" });
+      .json({ success: false, data: null, error: "Could not reset exam access" });
+  }
+}
+
+/**
+ * @openapi
+ * /api/exam-access/verify:
+ *   post:
+ *     summary: >
+ *       Redeems a one-time exam-access magic link token. Atomically claims the token
+ *       (only one caller can ever succeed for a given token) and returns the real exam
+ *       URL to redirect to. Called by the web app's /exam/access/[token] page.
+ *     tags: [Candidates]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Token redeemed, exam URL returned
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Invalid access link
+ *       410:
+ *         description: Link expired or already used
+ */
+export async function verifyExamAccess(req: Request, res: Response) {
+  try {
+    const parsed = examAccessVerifySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        error: parsed.error.issues[0]?.message ?? "Invalid input",
+      });
+    }
+
+    const tokenHash = hashToken(parsed.data.token);
+
+    const claimed = await Candidate.findOneAndUpdate(
+      {
+        examAccessTokenHash: tokenHash,
+        examAccessTokenExpiresAt: { $gt: new Date() },
+        examAccessTokenUsedAt: null,
+      },
+      { examAccessTokenUsedAt: new Date() },
+      { new: true }
+    );
+
+    if (claimed) {
+      return res.status(200).json({
+        success: true,
+        data: { examLink: claimed.examLink },
+        error: null,
+      });
+    }
+
+    // Claim failed — look up by hash alone (no filters) to report why.
+    const existing = await Candidate.findOne({ examAccessTokenHash: tokenHash });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, data: null, error: "Invalid access link" });
+    }
+
+    if (existing.examAccessTokenUsedAt) {
+      return res.status(410).json({
+        success: false,
+        data: null,
+        error: "This link has already been used. Contact support to get a new one.",
+      });
+    }
+
+    return res.status(410).json({
+      success: false,
+      data: null,
+      error: "This link has expired. Contact support to get a new one.",
+    });
+  } catch (err) {
+    console.error("Exam access verification error:", err);
+    return res
+      .status(500)
+      .json({ success: false, data: null, error: "Could not verify exam access link" });
   }
 }
 

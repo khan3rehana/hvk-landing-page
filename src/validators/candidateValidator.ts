@@ -31,6 +31,11 @@ export const createPaymentLinkSchema = z.object({
 });
 export type CreatePaymentLinkInput = z.infer<typeof createPaymentLinkSchema>;
 
+export const examAccessVerifySchema = z.object({
+  token: z.string().min(1, "token is required"),
+});
+export type ExamAccessVerifyInput = z.infer<typeof examAccessVerifySchema>;
+
 export const verifyPaymentLinkSchema = z.object({
   candidateId: z.string().min(1, "candidateId is required"),
   razorpay_payment_id: z.string().min(1),

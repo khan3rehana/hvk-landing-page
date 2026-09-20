@@ -18,6 +18,9 @@ export interface ICandidate extends Document {
   acknowledgementEmailSent: boolean;
   examLink?: string;
   examLinkIssuedAt?: Date;
+  examAccessTokenHash?: string;
+  examAccessTokenExpiresAt?: Date;
+  examAccessTokenUsedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +49,9 @@ const CandidateSchema = new Schema<ICandidate>(
     acknowledgementEmailSent: { type: Boolean, default: false },
     examLink: { type: String, default: null },
     examLinkIssuedAt: { type: Date, default: null },
+    examAccessTokenHash: { type: String, default: null, index: true },
+    examAccessTokenExpiresAt: { type: Date, default: null },
+    examAccessTokenUsedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

@@ -150,10 +150,20 @@ const options: swaggerJSDoc.Options = {
             createdAt: { type: "string", format: "date-time", example: "2026-09-19T00:00:00.000Z" },
           },
         },
-        ResendExamLinkSuccessData: {
+        ResetExamAccessSuccessData: {
           type: "object",
           properties: {
             emailSent: { type: "boolean", example: true },
+            examAccessUrl: {
+              type: "string",
+              example: "http://localhost:3000/exam/access/AbCdEf123...",
+            },
+          },
+        },
+        VerifyExamAccessSuccessData: {
+          type: "object",
+          properties: {
+            examLink: { type: "string", example: "https://hvk-infotech.example.com/exam/start" },
           },
         },
         RazorpayWebhookPayload: {
