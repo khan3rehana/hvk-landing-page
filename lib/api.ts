@@ -2,6 +2,7 @@ import type {
   ApiResponse,
   CreatePaymentLinkData,
   RegisterCandidateData,
+  VerifyExamAccessData,
   VerifyPaymentData,
 } from "@/types";
 
@@ -76,5 +77,13 @@ export function verifyPaymentLink(payload: VerifyPaymentLinkPayload) {
   return apiFetch<VerifyPaymentData>("/api/razorpay/payment-link/verify", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+/** Redeems a one-time exam-access magic link token. Called by /exam/access/[token]. */
+export function verifyExamAccess(token: string) {
+  return apiFetch<VerifyExamAccessData>("/api/exam-access/verify", {
+    method: "POST",
+    body: JSON.stringify({ token }),
   });
 }

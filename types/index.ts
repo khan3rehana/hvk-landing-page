@@ -84,3 +84,8 @@ export interface VerifyPaymentData {
   candidateId: string;
   emailSent: boolean;
 }
+
+/** Returned when a one-time exam-access magic link token is successfully redeemed. */
+export interface VerifyExamAccessData {
+  examLink: string;
+}
